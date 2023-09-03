@@ -1,3 +1,8 @@
+/*
+Nome: Rebeca Madi Oliveira
+RA: 22153168
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,7 +15,7 @@ typedef struct{
     int type; // tipo
     int wait; // tempo de espera do processo
     int run; // tempo executando 
-    int tr;
+    int tr; //tempo de chegada
 }Processo;
 
 typedef struct l{
@@ -23,7 +28,12 @@ typedef struct{
     double tt, tw;
 }Tempo;
 
+typedef struct{
+    int cpu, io, ambos;
+}Quantidade;
+
 Processo* novoProcesso(char PID[], int timeIn, int exec, int prio, int type, int wait, int run){
+    /*Aloca oo processo*/
     Processo* p = malloc(sizeof(Processo));
     strcpy(p->PID, PID);
     p->exec = exec;
@@ -37,7 +47,7 @@ Processo* novoProcesso(char PID[], int timeIn, int exec, int prio, int type, int
 }
 
 Lista* novaLista(Processo* p, int t){
-    //printf("aaaaa\n");
+    /*Aloca a lista*/
     Lista* lista = malloc(sizeof(Lista));
     lista->p = p;
     lista->t = t;
@@ -46,10 +56,10 @@ Lista* novaLista(Processo* p, int t){
 }
 
 Lista* inserirLista(Processo* p, Lista* lista, int t){
+    /*Insere ordenado por tempo*/
     if(lista == NULL){
         return novaLista(p, t);
     }else{
-        //printf("%s\n", lista->p->PID);
         if(p->timeIn >= lista->p->timeIn){
             lista->next = inserirLista(p, lista->next, lista->t);
         }else{
@@ -72,22 +82,19 @@ Lista* inserirFila(Processo* p, Lista* lista, int t){//pilha
 }
 
 Lista* lerArquivo(FILE* arq, Lista* lista){
+    /*Lê o arquivo*/
     int ti, e, prio, type;
     char pid[5];
-   // printf("a\n");
     while (fscanf(arq, "%s %d %d %d %d", pid, &ti, &e, &prio, &type)!=EOF)
     {
-        //printf("b\n");
         Processo* p = novoProcesso(pid, ti, e, prio, type, 0, 0);
-        //printf("jj\n");
-        lista = inserirLista(p, lista, 0);
-       // printf("ss\n");
+        lista = inserirLista(p, lista, 0); //Insere ordenado por tempo de chegada
     }
-   // printf("c\n");
     return lista;
 }
 
 Lista* abrirArquivo(char arq[], Lista* lista){
+    /*Abre o arquivo*/
     FILE* f;
     f = fopen(arq, "r");
     lista = lerArquivo(f, lista);
@@ -96,6 +103,7 @@ Lista* abrirArquivo(char arq[], Lista* lista){
 }
 
 Lista* remover_lista(Lista* lista, Processo* p){
+    /*Remove da lista*/
     if(lista==NULL) return NULL;
     else{
         if(lista->p == p){
@@ -107,11 +115,10 @@ Lista* remover_lista(Lista* lista, Processo* p){
             return lista;
         }
     }
-
-    
 }
 
 Lista* atualiza_tempo_c(Lista* lista, int t){
+    /*Atualiza os tempos do fcfs*/
     if(lista == NULL) return lista;
 
     lista->t += t;
@@ -122,36 +129,24 @@ Lista* atualiza_tempo_c(Lista* lista, int t){
 }
 
 Lista* run_fcfs(Lista* fcfs, Lista* lista){
+    /*Execução do fcfs*/
     while (lista!=NULL)
     {
-       // printf("h\n");
-        fcfs = inserirLista(lista->p, fcfs, 0);
-        //printf("l\n");
-        lista = remover_lista(lista, lista->p);
-        //printf("m\n");
+        //A lista está ordenada por ordem de chegada
+        fcfs = inserirLista(lista->p, fcfs, 0);//Insere
+        lista = remover_lista(lista, lista->p);//Remove
     }
-    fcfs = atualiza_tempo_c(fcfs, 0);
+    fcfs = atualiza_tempo_c(fcfs, 0); //Atualiza os tempos de execução e de espera
     return fcfs;
 }
 
 void exibe(Lista* lista){
+    /*Exibe a fila de processos*/
     if(lista!=NULL){
-        Processo* aux = lista->p;
-        //printf("PID: %s | ti: %d | e: %d | prio: %d | type: %d | w: %d | ex: %d\n", aux->PID, aux->timeIn, aux->exec, aux->prio, aux->type, aux->wait, aux->run);
-        printf("%s ", aux->PID);
+        Processo* aux = lista->p;printf("%s ", aux->PID);
         exibe(lista->next);
     }else{
         printf("\n");
-    }
-    //printf("abczn");
-}
-
-int buscarLista(Lista* lista, Processo* p){
-    if(lista == NULL){
-        return 0;
-    }else{
-        if(lista->p==p) return 1;
-        else return buscarLista(lista->next, p);
     }
 }
 
@@ -166,6 +161,7 @@ Lista* eliminar(Lista* lista, Processo* p){
 }
 
 Tempo* soma_tempo(Lista* lista, Tempo* tempo){
+    /*Soma os tempos de execução e espera*/
     double sum = 0.0, sum2 = 0.0;
     Lista* aux = lista;
         while (aux!=NULL)
@@ -184,6 +180,7 @@ Tempo* soma_tempo(Lista* lista, Tempo* tempo){
 }
 
 int cont(int n, Lista* r){
+    /*Conta a quantidade de entradas*/
     if(r == NULL){
         return n;
     }else{
@@ -192,7 +189,14 @@ int cont(int n, Lista* r){
 }
 
 Processo* buscaMenorTempo(Lista* lista, Processo* p, int t){
-    if(lista == NULL) return p;
+    /*Retorna o processo com menor tempo no tempo atual*/
+    if(lista == NULL){
+        if(p->timeIn<=t){
+            return p;
+        }else{
+            return NULL;
+        }
+    }
     if(lista->p->timeIn<=t){
          if(lista->p->exec<p->exec){
             p = lista->p;
@@ -200,17 +204,6 @@ Processo* buscaMenorTempo(Lista* lista, Processo* p, int t){
     }
     return buscaMenorTempo(lista->next, p, t);
     
-}
-
-Lista* buscaTempo(Lista* lista, Lista* list, int t){
-    if(lista == NULL) return list;
-    if(lista->p->timeIn==t){
-        if(buscarLista(list, lista->p)==0){
-            list = inserirLista(lista->p, list, t);
-        }
-    }
-    list = buscaTempo(lista->next, list, t);   
-    return list;
 }
 
 Lista* atualiza_espera(Lista*lista, int t, int ta){
@@ -225,44 +218,34 @@ Lista* atualiza_espera(Lista*lista, int t, int ta){
 }
 
 Lista* run_sjf(Lista* sjf, Lista* lista){
+    /*Execução do sjf*/
     int t=0;
     Processo* u=NULL;
     while (lista!=NULL)
     {
-        //sjf = buscaTempo(lista, sjf, t);
-        //if(sjf!=NULL){
-            Processo* aux = buscaMenorTempo(lista, lista->p, t);
-            aux->run = (t+aux->exec)-aux->timeIn;
-            aux->wait = t-aux->timeIn;
-            sjf = inserirFila(aux, sjf, t);
-            t += aux->exec;
-            lista = remover_lista(lista, aux);
-            /*if(u==NULL) u = aux;
-            else if(u!=aux){
-                u = aux;
-                sjf = inserirLista(aux, sjf, t);
-                //sjf = atualiza_tempo_c(sjf, 0);
-                
-            }else if(u==aux){
-                if(u->exec==(t-u->timeIn)){
-                    u->run = t - u->timeIn;
-                    u->timeIn = -1;
-                    lista = atualiza_espera(lista, t-u->timeIn);
-                    lista = remover_lista(lista, aux);
-                    u = NULL;
-                }else{
-                    u->run++;
-                    u->timeIn++;
-                    u->exec--;
-                }
-            }*/
-        //}
+              Processo* aux = buscaMenorTempo(lista, lista->p, t); //Busca o processo com menor tempo
+              if(aux){ //Se tiver processo no momento
+                aux->run = (t+aux->exec)-aux->timeIn;
+                aux->wait = t-aux->timeIn;
+                sjf = inserirFila(aux, sjf, t);
+                t += aux->exec;
+                lista = remover_lista(lista, aux);
+              }else{ //Se não tiver processo no momento
+                 t++;
+             }
     }
     return sjf;
 }
 
 Processo* chegouPrimeiro(Lista* lista, Processo* p, int t){
-    if(lista==NULL) return p;
+    /*Retorna o que chegou primeiro de acordo com o tempo atual*/
+    if(lista==NULL){
+        if(p->timeIn<=t){
+            return p;
+        }else{
+            return NULL;
+        }
+    }
     else{
         if(lista->p->timeIn<=t){
             if(lista->p->timeIn==p->timeIn){
@@ -277,54 +260,176 @@ Processo* chegouPrimeiro(Lista* lista, Processo* p, int t){
     }
 }
 
+
+
 Lista* run_rr(Lista* rr, Lista* lista, int quantum){
     int t=0, q;
     while (lista!=NULL)
     {
-        Processo* p = chegouPrimeiro(lista, lista->p, t);
-        rr = inserirFila(p, rr, t);
-        p->wait += t - p->timeIn;
-        //printf("%s %d %d\n", p->PID, p->wait, t);
-        if((p->exec-quantum)<=0){
-            q = quantum - p->exec;
-
-            if(q==0){t+= quantum;}
-            else{ t += q;}
-
-            p->run = t - p->tr;
-            //printf("r: %s %d\n", p->PID, p->run);
-            lista = remover_lista(lista, p);
-        }else{
-            p->exec = p->exec - quantum;
-            p->timeIn = t + quantum;
-            t += quantum;
-            q = quantum;
-        }
-        /*
-        for(int i=0; i<q; i++){
-            int aux = p->tr;
-            p->tr = -1;
-            //exibe(rr);
-            lista = atualiza_espera(lista, 1, t);
-            p->tr = aux;
-        }*/
+          Processo* p = chegouPrimeiro(lista, lista->p, t); //Pega o primeiro
+          if(p){
+            rr = inserirFila(p, rr, t); //Insere na fila
+            p->wait += t - p->timeIn;
+            if((p->exec-quantum)<=0){ //Se o processo estiver no fim
+                q = quantum - p->exec;
+    
+                if(q==0){t+= quantum;}
+                else{ t += q;}
+    
+                p->run = t - p->tr;
+                lista = remover_lista(lista, p);
+            }else{ //Se o processo ainda não estiver no fim
+                p->exec = p->exec - quantum;
+                p->timeIn = t + quantum;
+                t += quantum;
+                q = quantum;
+            }
+          }else{ //Se ninguem tiver chegado no momento incrementa o tempo
+            t++;
+          }
     }
     return rr;
 }
 
-int main(){
-    Lista* lista = NULL;
-    Lista* final = NULL;
-    Tempo* tempo = malloc(sizeof(Tempo));
+Lista* run_srtf(Lista* srtf, Lista* lista, int quantum){
+  int t=0;
+
+  while(lista!=NULL){
+        Processo* aux = buscaMenorTempo(lista, lista->p, t); //busca o processo que tem menor tempo no tempo atual
+        if(aux){
+            aux->wait += t-aux->timeIn;
+            srtf = inserirFila(aux, srtf, t);
+            if((aux->exec-quantum)<=0){
+                //Se for o fim do processo
+                int q = quantum - aux->exec;
+                if(q==0){
+                    t += quantum;
+                }else{
+                    t += q;
+                }
+                aux->exec = 0;
+                aux->run = t - aux->tr;
+                lista = remover_lista(lista, aux);
+            }else{
+                //Se o processo ainda continuar
+                aux->exec = aux->exec - quantum;
+                aux->timeIn = t + quantum;
+                t += quantum;
+            }
+        }else{
+          t++;
+        }
+  }
+  return srtf;
+}
+
+Processo* maiorPrioridade(Lista* lista, Processo* p, int t){
+    /*Retorna o processo de maior prioridade no tempo t*/
+    if(lista == NULL){
+        if(p->timeIn <= t) return p;
+        else return NULL;
+    }else{
+        if(lista->p->timeIn <= t){
+            if(lista->p->prio > p->prio){
+                return maiorPrioridade(lista->next, lista->p, t);
+            }else{
+                return maiorPrioridade(lista->next, p, t);
+            }
+        }else{
+            return maiorPrioridade(lista->next, p, t);
+        }
+    }
+}
+
+Lista* run_prioc(Lista* prioc, Lista* lista){
+    int t=0; //tempo
+    
+    while (lista!=NULL)//Enquanto houver processos na lista
+    {
+        Processo* p = maiorPrioridade(lista, lista->p, t); //Pega o processo de maior prioridade no tempo t
+        if(p!=NULL){ //se não houver processo só incrementa o tempo
+            p->wait = t - p->timeIn; //atualiza o tw
+            p->run = (t + p->exec) - p->timeIn; //Atualiza tt
+            prioc = inserirFila(p, prioc, t); //Insere
+            t += p->exec;
+            lista = remover_lista(lista, p); //remove
+            
+        }else{
+             t++;
+        }
+    }
+    return prioc;
+}
+
+Lista* run_priop(Lista* priop, Lista* lista, int q){
+    /*Função de execução do algoritmo de propriedade preemptiva*/
+    int t = 0; //tempo atual
+    while (lista!=NULL) //Enquanto a lista não é vazia
+    {
+        Processo* p = maiorPrioridade(lista, lista->p, t); //Verifica o algoritmo de maior prio no tempo atual
+        if(p!=NULL){ //se não tiver processo no momento ele irá apenas incrementar o tempo
+            if((p->exec - q)>0){ //Se o processo não terminar nessa etapa
+                p->exec = p->exec - q; //decrementa a burst time
+                p->wait = t - p->timeIn; //atualiza a espera
+                p->timeIn += q; //atualiza o tempo de chegada (variavel auxiliar)
+                priop = inserirFila(p, priop, t); //Insere na fila de processos
+                t += q; //Incrementa o tempo
+            }else{ //s[e o processo chegar ao fim
+                p->run = (t+p->exec) - p->tr; //Atualiza o tempo de execução
+                p->wait = t - p->timeIn; //Atualiza o tempo de espera
+                priop = inserirFila(p, priop, t); // Insere na fula
+                t +=  p->exec;//Incrementa tempo
+                lista = remover_lista(lista, p); //Remove da lista
+            }
+        }else{
+             t++;
+        }
+    }
+    return priop; 
+}
+
+Quantidade* contador(Quantidade* q, Lista* lista){
+    /*Função que conta a quantidade de tipos para fazer a predição*/
+    if(lista == NULL) return q;
+    else{
+        if(lista->p->type == 1) q->cpu++;
+        else if(lista->p->type == 2) q->io++;
+        else if(lista->p->type == 3) q->ambos;
+
+        return contador(q, lista->next);
+    }
+}
+
+int main(int n, char *args[]){
+    Lista* lista = NULL; //Lista com os processos de entrada
+    Lista* final = NULL; //Lista final de processos
+    Tempo* tempo = malloc(sizeof(Tempo)); //Guarda os tempos de execução e de espera
+
     double tt, tw, c;
     char nome[50];
-    printf("Informe o nome do arquivo (Ex: dados.txt): ");
-    scanf("%s", nome);
+    strcpy(nome, args[1]);
+
+    Quantidade* quantidade = malloc(sizeof(Quantidade)); //Variavel que guarda os tipos
+    quantidade->cpu = 0;
+    quantidade->io = 0;
+    quantidade->ambos = 0;
+
+    lista = abrirArquivo(nome, lista); //Abre e lê o arquivo
+    quantidade = contador(quantidade, lista); //Verifica a quantidade de tipos
+
+    if((quantidade->cpu > quantidade->io) && (quantidade->cpu > quantidade->ambos)){
+        printf("Recomendacao de acordo com os tipos dos processos: \nFCFS(Melhor) \nSJF \nSRTF(menos indicado)\n");
+    }else if((quantidade->io > quantidade->cpu) && (quantidade->io >quantidade->ambos)){
+        printf("Recomendacao de acordo com os tipos dos processos: FCFS e RR");
+    }else{
+        printf("Recomendacao de acordo com os tipos dos processos: PrioP e PrioC\n");
+    }
+    printf("Voce pode escolher qualquer um para testar!\n\n");
     printf("Algoritmos de escalonamento: (1)FCFS, (2)SJF, (3)RR, (4)SRTF, (5)PrioC, (6)PrioP\n");
     printf("Escolha um algoritmo: ");
     int op;
     scanf("%d", &op);
-    lista = abrirArquivo(nome, lista);
+
     c = (double) cont(0, lista);
     if(op==1){
         final = run_fcfs(final, lista);
@@ -339,24 +444,30 @@ int main(){
         final = run_rr(final, lista, q);
         printf("---RR---\n");
     }else if(op==4){
-
+        int q;
+        printf("Informe o quantum: ");
+        scanf("%d", &q);
+        final = run_srtf(final, lista, q);
+        printf("---SRTF---\n");
     }else if(op==5){
-
+        final = run_prioc(final, lista);
     }else if(op==6){
-
+        int q;
+        printf("Informe o quantum: ");
+        scanf("%d", &q);
+        final = run_priop(final, lista, q);
     }else{
         printf("Escolha um algoritmo  valida!\n");
         return 0;
     }
 
     exibe(final);
-    tempo = soma_tempo(final, tempo);
-    //printf("%lf %lf %lf", tt, tw, c);
+    tempo = soma_tempo(final, tempo); //Soma os tempos de espera e de execução
     double r, w;
     r = (double) (tempo->tt/c);        
     w = (double) (tempo->tw/c);
 
-    printf("Tempo médio de execução: %.2lf\n", r);
-    printf("Tempo médio de espera: %.2lf\n", w);
+    printf("Tempo médio de execução (tt): %.2lf\n", r);
+    printf("Tempo médio de espera (tw): %.2lf\n", w);
     return 1;
 }
